@@ -1,0 +1,133 @@
+---
+title: "Prediction from accelerometer data"
+author: "Adriana Céspedes-Vindas"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.width = 5)
+knitr::opts_chunk$set(fig.height = 3)
+knitr::opts_chunk$set(fig.align = "center")
+knitr::opts_chunk$set(size = "tiny")
+```
+
+## Executive Summary
+In this project, we will work with devices such as Jawbone Up, Nike FuelBand, and Fitbit. The purpose is to make predictions with machine learning. For this reason, we will be using some tools like random forest and decission trees. 
+
+We will validate the accuracy of the prediction using random forest to predict the classe of each sample. The samples that we are using to validate are:
+I. Class A - exactly according to the specification
+II. Class B - throwing the elbows to the front
+III. Class C - lifting the dumbbell only halfway
+IV. Class D - lowering the dumbbell only halfway
+V. Class E - throwing the hips to the front
+
+## About the data
+"It is possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset)" (John Hopkins-Coursera, Machine-Learning Course). 
+    
+
+## Loading the Dataset
+"The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment" (John Hopkins-Coursera, Machine-Learning Course)
+
+## Installing required packages
+
+-caret
+-randomForest
+-e1071
+
+
+
+# Loading the data and replacing missing 
+
+First, two files are download. The first file contains the training data set. The second file contains the testing data set.
+
+```{r}
+train_set <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"),na.strings=c("NA",""))
+test_set <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"),na.strings=c("NA",""))
+```
+
+## Cleaning data
+  We remove the columns with missing values (NA values). We also remove those columns that are not significant to the study such as: timestamps and names (column 1 to 7).
+  
+The cleaning is applied to both dataframes with the following code.
+
+```{r}
+train_set[1:7] <- NULL
+test_set[1:7] <- NULL
+
+train<- train_set[,!sapply(train_set,function(x) any(is.na(x)))]
+test<- test_set[,!sapply(test_set,function(x) any(is.na(x)))]
+
+```
+
+## The dimenssions
+
+We got the final dimenssions of the working data.
+
+```{r}
+dim(train)
+dim(test)
+```
+
+## Splitting the data
+
+In this part, we will use caret package to split the training data in two subsets. The fisrt subset is used to create the model (it is conformed by 80% of the samples) and the second subset it is used to validate the model.
+
+This is important because the model must be tested with data from the training data before using external data. The cross validation matrix will show how good the model is.
+
+We use the standar 80/20 for training and validation.
+
+```{r}
+library("caret")
+
+indexPartition <- createDataPartition(train$classe, p=0.80, list=F)
+train_data_model <- train[indexPartition, ]
+validation_data_model <- train[-indexPartition, ]
+```
+
+
+## Random Forest Model
+  Installing the packages required to run a random forest model.
+  Then, the model is created with the 80% of samples from the training dataset.
+
+```{r}
+library("randomForest")
+
+set.seed(1)
+
+rf_model =randomForest(classe ~ . , data = train_data_model)
+```
+
+## Random Forest Model Validation
+
+```{r}
+prediction1 <- predict(rf_model, validation_data_model)
+confusionMatrix(prediction1, validation_data_model$classe)
+```
+
+## Other resources - Classification Trees
+
+We also use rpart model to contrast the results obtained with random forest.
+
+```{r}
+model_rpart <- train(classe ~ ., data = train_data_model, method = "rpart" )
+prediction2 <- predict(model_rpart, validation_data_model)
+
+confusionMatrix(prediction2, validation_data_model$classe)
+```
+
+## Prediction test of 20 samples
+Finally, we run the model with the 20 external samples. We use random forest because it is more accurate than decission trees as we can see from the validations.
+```{r}
+predictiontest <- predict(rf_model, test)
+predictiontest
+```
+
+
+## Conclusion
+  Finally, we get that the data samples used for training and validation purposes were sufficient to create a model with high accurancy (99%). Therefore, random forest is selected in this case. 
+  However, it is important to create and test the samples with several model to make a good decission of which one to use.
+
